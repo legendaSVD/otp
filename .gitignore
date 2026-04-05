@@ -1,0 +1,16 @@
+# --- Project Upload Hub managed section ---
+*.log
+*.pyc
+.DS_Store
+.idea/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+.vscode/
+__pycache__/
+coverage/
+dist/
+Thumbs.db
+venv/
+# --- End managed section ---
