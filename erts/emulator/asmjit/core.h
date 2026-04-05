@@ -1,0 +1,43 @@
+#ifndef ASMJIT_CORE_H_INCLUDED
+#define ASMJIT_CORE_H_INCLUDED
+namespace asmjit {
+}
+#include <asmjit/asmjit-scope-begin.h>
+#include <asmjit/core/api-config.h>
+#include <asmjit/core/archcommons.h>
+#include <asmjit/core/archtraits.h>
+#include <asmjit/core/assembler.h>
+#include <asmjit/core/builder.h>
+#include <asmjit/core/codebuffer.h>
+#include <asmjit/core/codeholder.h>
+#include <asmjit/core/compiler.h>
+#include <asmjit/core/constpool.h>
+#include <asmjit/core/cpuinfo.h>
+#include <asmjit/core/emitter.h>
+#include <asmjit/core/environment.h>
+#include <asmjit/core/errorhandler.h>
+#include <asmjit/core/fixup.h>
+#include <asmjit/core/formatter.h>
+#include <asmjit/core/func.h>
+#include <asmjit/core/globals.h>
+#include <asmjit/core/inst.h>
+#include <asmjit/core/jitallocator.h>
+#include <asmjit/core/jitruntime.h>
+#include <asmjit/core/logger.h>
+#include <asmjit/core/operand.h>
+#include <asmjit/core/osutils.h>
+#include <asmjit/core/string.h>
+#include <asmjit/core/target.h>
+#include <asmjit/core/type.h>
+#include <asmjit/core/virtmem.h>
+#include <asmjit/support/arena.h>
+#include <asmjit/support/arenahash.h>
+#include <asmjit/support/arenalist.h>
+#include <asmjit/support/arenapool.h>
+#include <asmjit/support/arenastring.h>
+#include <asmjit/support/arenatree.h>
+#include <asmjit/support/arenavector.h>
+#include <asmjit/support/span.h>
+#include <asmjit/support/support.h>
+#include <asmjit/asmjit-scope-end.h>
+#endif

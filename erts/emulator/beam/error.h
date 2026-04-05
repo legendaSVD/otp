@@ -1,0 +1,87 @@
+#ifndef __ERROR_H__
+#define __ERROR_H__
+#include "code_ix.h"
+#define EXTAG_OFFSET	0
+#define EXTAG_BITS	2
+#define EXTAG_ERROR	0
+#define EXTAG_EXIT	1
+#define EXTAG_THROWN	2
+#define NUMBER_EXC_TAGS 3
+#define EXC_CLASSBITS	((1<<EXTAG_BITS)-1)
+#define GET_EXC_CLASS(x) ((x) & EXC_CLASSBITS)
+#define EXF_OFFSET	EXTAG_BITS
+#define EXF_BITS	8
+#define EXF_PANIC         (1<<(0+EXF_OFFSET))
+#define EXF_THROWN        (1<<(1+EXF_OFFSET))
+#define EXF_LOG           (1<<(2+EXF_OFFSET))
+#define EXF_NATIVE        (1<<(3+EXF_OFFSET))
+#define EXF_SAVETRACE     (1<<(4+EXF_OFFSET))
+#define EXF_ARGLIST       (1<<(5+EXF_OFFSET))
+#define EXF_RESTORE_NFUNC (1<<(6+EXF_OFFSET))
+#define EXF_HAS_EXT_INFO  (1<<(7+EXF_OFFSET))
+#define EXC_FLAGBITS	(((1<<(EXF_BITS+EXF_OFFSET))-1) \
+			 & ~((1<<(EXF_OFFSET))-1))
+#define EXF_PRIMARY	(EXF_PANIC | EXF_THROWN | EXF_LOG | EXF_NATIVE)
+#define PRIMARY_EXCEPTION(x) ((x) & (EXF_PRIMARY | EXC_CLASSBITS))
+#define NATIVE_EXCEPTION(x) ((x) | EXF_NATIVE)
+#define EXC_OFFSET	(EXF_OFFSET+EXF_BITS)
+#define EXC_BITS	5
+#define EXC_INDEXBITS	(((1<<(EXC_BITS+EXC_OFFSET))-1) \
+			 & ~((1<<(EXC_OFFSET))-1))
+#define GET_EXC_INDEX(x) (((x) & EXC_INDEXBITS) >> EXC_OFFSET)
+#define EXC_NULL 0
+#define EXC_PRIMARY (0 | EXF_SAVETRACE)
+#define EXC_ERROR  (EXC_PRIMARY | EXTAG_ERROR | EXF_LOG)
+#define EXC_EXIT   (EXC_PRIMARY | EXTAG_EXIT)
+#define EXC_THROWN (EXC_PRIMARY | EXTAG_THROWN | EXF_THROWN)
+#define EXC_ERROR_2 (EXC_ERROR | EXF_ARGLIST)
+#define EXC_ERROR_3 (EXC_ERROR | EXF_ARGLIST | EXF_HAS_EXT_INFO)
+#define EXC_NORMAL		((1 << EXC_OFFSET) | EXC_EXIT)
+#define EXC_INTERNAL_ERROR	((2 << EXC_OFFSET) | EXC_ERROR | EXF_PANIC)
+#define EXC_BADARG		((3 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_BADARITH		((4 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_BADMATCH		((5 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_FUNCTION_CLAUSE	((6 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_CASE_CLAUSE		((7 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_IF_CLAUSE		((8 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_UNDEF		((9 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_BADFUN		((10 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_BADARITY		((11 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_TIMEOUT_VALUE	((12 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_NOPROC		((13 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_NOTALIVE		((14 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_SYSTEM_LIMIT	((15 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_TRY_CLAUSE		((16 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_NOTSUP		((17 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_BADMAP		((18 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_BADKEY		((19 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_BADRECORD		((20 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_BADFIELD		((21 << EXC_OFFSET) | EXC_ERROR)
+#define EXC_NOVALUE		((22 << EXC_OFFSET) | EXC_ERROR)
+#define NUMBER_EXIT_CODES 23
+#define TRAP		(1 << EXC_OFFSET)
+#define BADARG EXC_BADARG
+#define BADARITH EXC_BADARITH
+#define BADKEY EXC_BADKEY
+#define BADMAP EXC_BADMAP
+#define BADMATCH EXC_BADMATCH
+#define SYSTEM_LIMIT EXC_SYSTEM_LIMIT
+#define TLOAD_OK 0
+#define TLOAD_MAGIC_NUMBER 1
+#define TLOAD_FORMAT 2
+#define TLOAD_MODULE 3
+#define TLOAD_SIZE 4
+#define MAX_BACKTRACE_SIZE 64
+#define DEFAULT_BACKTRACE_SIZE 8
+extern Eterm error_atom[NUMBER_EXIT_CODES];
+extern Eterm exception_tag[NUMBER_EXC_TAGS];
+struct StackTrace {
+    Eterm header;
+    Eterm freason;
+    ErtsCodePtr pc;
+    const ErtsCodeMFA* current;
+    int depth;
+    int max_depth;
+    ErtsCodePtr trace[1];
+};
+#endif

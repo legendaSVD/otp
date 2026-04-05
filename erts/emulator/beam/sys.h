@@ -1,0 +1,1117 @@
+#ifndef __SYS_H__
+#define __SYS_H__
+#if !defined(__GNUC__) || defined(__e2k__)
+#  define ERTS_AT_LEAST_GCC_VSN__(MAJ, MIN, PL) 0
+#elif !defined(__GNUC_MINOR__)
+#  define ERTS_AT_LEAST_GCC_VSN__(MAJ, MIN, PL) \
+  ((__GNUC__ << 24) >= (((MAJ) << 24) | ((MIN) << 12) | (PL)))
+#elif !defined(__GNUC_PATCHLEVEL__)
+#  define ERTS_AT_LEAST_GCC_VSN__(MAJ, MIN, PL) \
+  (((__GNUC__ << 24) | (__GNUC_MINOR__ << 12)) >= (((MAJ) << 24) | ((MIN) << 12) | (PL)))
+#else
+#  define ERTS_AT_LEAST_GCC_VSN__(MAJ, MIN, PL) \
+  (((__GNUC__ << 24) | (__GNUC_MINOR__ << 12) | __GNUC_PATCHLEVEL__) >= (((MAJ) << 24) | ((MIN) << 12) | (PL)))
+#endif
+#ifdef ERTS_INLINE
+#  ifndef ERTS_CAN_INLINE
+#    define ERTS_CAN_INLINE 1
+#  endif
+#else
+#  if defined(__GNUC__)
+#    define ERTS_CAN_INLINE 1
+#    define ERTS_INLINE __inline__
+#  elif defined(__WIN32__)
+#    define ERTS_CAN_INLINE 1
+#    define ERTS_INLINE __inline
+#  else
+#    define ERTS_CAN_INLINE 0
+#    define ERTS_INLINE
+#  endif
+#endif
+#ifndef ERTS_FORCE_INLINE
+#  if ERTS_AT_LEAST_GCC_VSN__(3,1,1)
+#    define ERTS_FORCE_INLINE __inline__ __attribute__((__always_inline__))
+#  elif defined(__WIN32__)
+#    define ERTS_FORCE_INLINE __forceinline
+#  endif
+#  ifndef ERTS_FORCE_INLINE
+#    define ERTS_FORCE_INLINE ERTS_INLINE
+#  endif
+#endif
+#ifndef ERTS_NOINLINE
+#  if ERTS_AT_LEAST_GCC_VSN__(3,1,1)
+#    define ERTS_NOINLINE __attribute__((__noinline__))
+#  else
+#    define ERTS_NOINLINE
+#  endif
+#endif
+#if defined(DEBUG) || defined(ERTS_ENABLE_LOCK_CHECK)
+#  undef ERTS_CAN_INLINE
+#  define ERTS_CAN_INLINE 0
+#  undef ERTS_INLINE
+#  define ERTS_INLINE
+#endif
+#if ERTS_CAN_INLINE
+#define ERTS_GLB_FORCE_INLINE static ERTS_FORCE_INLINE
+#define ERTS_GLB_INLINE static ERTS_INLINE
+#else
+#define ERTS_GLB_FORCE_INLINE
+#define ERTS_GLB_INLINE
+#endif
+#if (ERTS_CAN_INLINE || defined(ERTS_DO_INCL_GLB_INLINE_FUNC_DEF))
+#  define ERTS_GLB_INLINE_INCL_FUNC_DEF 1
+#else
+#  define ERTS_GLB_INLINE_INCL_FUNC_DEF 0
+#endif
+#ifdef __GNUC__
+#  define ERTS_NOINLINE __attribute__((__noinline__))
+#else
+#  define ERTS_NOINLINE
+#endif
+#define ERTS_I64_LITERAL(X) X##LL
+#define ErtsInArea(ptr,start,nbytes) \
+    ((UWord)((char*)(ptr) - (char*)(start)) < (nbytes))
+#define ErtsInBetween(ptr,start,end) \
+    ErtsInArea(ptr, start, (char*)(end) - (char*)(start))
+#define ErtsContainerStruct(ptr, type, member) \
+    ((type *)((char *)(1 ? (ptr) : &((type *)0)->member) - offsetof(type, member)))
+#define ErtsContainerStruct_(ptr, type, memberv) \
+    ((type *)((char *)(1 ? (ptr) : ((type *)0)->memberv) - offsetof(type, memberv)))
+#define ErtsSizeofMember(type, member) sizeof(((type *)0)->member)
+#if defined (__WIN32__)
+#  include "erl_win_sys.h"
+#else
+#  include "erl_unix_sys.h"
+#ifndef UNIX
+#  define UNIX 1
+#endif
+#endif
+#ifndef __has_builtin
+  #define __has_builtin(x) 0
+#endif
+#if ERTS_AT_LEAST_GCC_VSN__(5, 1, 0)
+#  define HAVE_OVERFLOW_CHECK_BUILTINS 1
+#elif __has_builtin(__builtin_mul_overflow)
+#  define HAVE_OVERFLOW_CHECK_BUILTINS 1
+#endif
+#include "erl_misc_utils.h"
+#if defined(__APPLE__)
+#  if defined(__BIG_ENDIAN__) && !defined(WORDS_BIGENDIAN)
+#    define WORDS_BIGENDIAN 1
+#  elif !defined(__BIG_ENDIAN__) && defined(WORDS_BIGENDIAN)
+#    undef WORDS_BIGENDIAN
+#  endif
+#endif
+#ifndef ERTS_SYS_FD_TYPE
+#define ERTS_SYS_FD_INVALID ((ErtsSysFdType) -1)
+typedef int ErtsSysFdType;
+#else
+#ifndef ERTS_SYS_FD_INVALID
+# error missing ERTS_SYS_FD_INVALID
+#endif
+typedef ERTS_SYS_FD_TYPE ErtsSysFdType;
+#endif
+#if ERTS_AT_LEAST_GCC_VSN__(2, 96, 0)
+#  define ERTS_LIKELY(BOOL)   __builtin_expect((BOOL), !0)
+#  define ERTS_UNLIKELY(BOOL) __builtin_expect((BOOL), 0)
+#else
+#  define ERTS_LIKELY(BOOL)   (BOOL)
+#  define ERTS_UNLIKELY(BOOL) (BOOL)
+#endif
+#if (ERTS_AT_LEAST_GCC_VSN__(5, 1, 0) || __has_builtin(__builtin_unreachable))
+#  define ERTS_UNREACHABLE __builtin_unreachable()
+#elif defined(_MSC_VER)
+#  define ERTS_UNREACHABLE __assume(0)
+#else
+#  define ERTS_UNREACHABLE ((void)0)
+#endif
+#if !defined(DEBUG)
+#  define ERTS_ASSUME(Expr) ((Expr) ?                                          \
+                             (void)0 :                                         \
+                             (void)ERTS_UNREACHABLE)
+#else
+#  define ERTS_ASSUME(Expr) ASSERT((Expr))
+#endif
+#if ERTS_AT_LEAST_GCC_VSN__(2, 96, 0) && !defined(_AIX)
+#if (defined(__APPLE__) && defined(__MACH__)) || defined(__DARWIN__)
+#  define ERTS_WRITE_UNLIKELY(X) X __attribute__ ((section ("__DATA,ERTS_LOW_WRITE") ))
+#else
+#  define ERTS_WRITE_UNLIKELY(X) X __attribute__ ((section ("ERTS_LOW_WRITE") ))
+#endif
+#else
+#  define ERTS_WRITE_UNLIKELY(X) X
+#endif
+#ifdef __GNUC__
+#  if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 5) || defined(__clang__)
+#    define ERTS_DECLARE_DUMMY(X) X __attribute__ ((unused))
+#  else
+#    define ERTS_DECLARE_DUMMY(X) X
+#  endif
+#else
+#  define ERTS_DECLARE_DUMMY(X) X
+#endif
+#if !defined(__func__)
+#  if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L
+#    if !defined(__GNUC__) ||  __GNUC__ < 2
+#      define __func__ "[unknown_function]"
+#    else
+#      define __func__ __FUNCTION__
+#    endif
+#  endif
+#endif
+#define ERTS_MK_VSN_INT(Major, Minor, Build) \
+    ((((Major) & 0x3ff) << 20) | (((Minor) & 0x3ff) << 10) | ((Build) & 0x3ff))
+#ifndef ERTS_EXIT_AFTER_DUMP
+#  define ERTS_EXIT_AFTER_DUMP exit
+#endif
+#if __GNUC__
+#  define __decl_noreturn
+#  ifndef __noreturn
+#     define __noreturn __attribute__((noreturn))
+#  endif
+#else
+#  if defined(__WIN32__) && defined(_MSC_VER)
+#    define __noreturn
+#    define __decl_noreturn __declspec(noreturn)
+#  else
+#    define __noreturn
+#    define __decl_noreturn
+#  endif
+#endif
+#define ERTS_ASSERT(e) \
+    ((void) ((e) ? 1 : (erl_assert_error(#e, __func__, __FILE__, __LINE__), 0)))
+__decl_noreturn void __noreturn erl_assert_error(const char* expr, const char *func,
+						 const char* file, int line);
+#undef ASSERT
+#ifdef DEBUG
+#  define ASSERT(e) ERTS_ASSERT(e)
+#else
+#  define ASSERT(e) ((void) 1)
+#endif
+#ifdef VALGRIND
+#  define ERTS_UNDEF(V,I)
+#else
+#  define ERTS_UNDEF(V,I) V = I
+#endif
+#if ((__GNUC__ * 100) + __GNUC_MINOR__) >= 402
+#define ERTS_GCC_DIAG_STR(s) #s
+#define ERTS_GCC_DIAG_JOINSTR(x,y) ERTS_GCC_DIAG_STR(x ## y)
+# define ERTS_GCC_DIAG_DO_PRAGMA(x) _Pragma (#x)
+# define ERTS_GCC_DIAG_PRAGMA(x) ERTS_GCC_DIAG_DO_PRAGMA(GCC diagnostic x)
+# if ((__GNUC__ * 100) + __GNUC_MINOR__) >= 406
+#  define ERTS_GCC_DIAG_OFF(x) ERTS_GCC_DIAG_PRAGMA(push) \
+      ERTS_GCC_DIAG_PRAGMA(ignored ERTS_GCC_DIAG_JOINSTR(-W,x))
+#  define ERTS_GCC_DIAG_ON(x) ERTS_GCC_DIAG_PRAGMA(pop)
+# else
+#  define ERTS_GCC_DIAG_OFF(x) ERTS_GCC_DIAG_PRAGMA(ignored ERTS_GCC_DIAG_JOINSTR(-W,x))
+#  define ERTS_GCC_DIAG_ON(x)  ERTS_GCC_DIAG_PRAGMA(warning ERTS_GCC_DIAG_JOINSTR(-W,x))
+# endif
+#else
+# define ERTS_GCC_DIAG_OFF(x)
+# define ERTS_GCC_DIAG_ON(x)
+#endif
+#if ERTS_AT_LEAST_GCC_VSN__(3,1,1) && !defined __cplusplus
+# define ERTS_CT_ASSERT(e) \
+    do { \
+	enum { compile_time_assert__ = __builtin_choose_expr((e),0,(void)0) }; \
+    } while(0)
+#else
+# define ERTS_CT_ASSERT(e) \
+    do { \
+        enum { compile_time_assert__ = 1/((int)(e)) };  \
+    } while (0)
+#endif
+#ifdef __has_attribute
+#  if __has_attribute(__fallthrough__)
+#    define ERTS_FALLTHROUGH()                    __attribute__((__fallthrough__))
+#  endif
+#endif
+#ifndef ERTS_FALLTHROUGH
+# define ERTS_FALLTHROUGH()                    do {} while (0)
+#endif
+#include <stdbool.h>
+#include <stdarg.h>
+#if !defined(__STDC__) && !defined(_MSC_VER)
+#  define const
+#endif
+#undef __deprecated
+#if ERTS_AT_LEAST_GCC_VSN__(3, 0, 0)
+#  define __deprecated __attribute__((deprecated))
+#else
+#  define __deprecated
+#endif
+#if ERTS_AT_LEAST_GCC_VSN__(3, 0, 4)
+#  define erts_align_attribute(SZ) __attribute__ ((aligned (SZ)))
+#else
+#  define erts_align_attribute(SZ)
+#endif
+#if !((SIZEOF_VOID_P >= 4) && (SIZEOF_VOID_P == SIZEOF_SIZE_T) \
+      && ((SIZEOF_VOID_P == SIZEOF_INT) || (SIZEOF_VOID_P == SIZEOF_LONG) || \
+          (SIZEOF_VOID_P == SIZEOF_LONG_LONG)))
+#error Cannot handle this combination of int/long/void*/size_t sizes
+#endif
+#if SIZEOF_VOID_P == 8
+#undef  ARCH_32
+#define ARCH_64
+#define ERTS_SIZEOF_TERM 8
+#elif SIZEOF_VOID_P == 4
+#define ARCH_32
+#undef  ARCH_64
+#define ERTS_SIZEOF_TERM 4
+#else
+#error Neither 32 nor 64 bit architecture
+#endif
+#if SIZEOF_VOID_P != SIZEOF_SIZE_T
+#error sizeof(void*) != sizeof(size_t)
+#endif
+#if SIZEOF_VOID_P == SIZEOF_LONG
+typedef unsigned long Eterm erts_align_attribute(sizeof(long));
+typedef unsigned long Uint  erts_align_attribute(sizeof(long));
+typedef long          Sint  erts_align_attribute(sizeof(long));
+#define SWORD_CONSTANT(Const) Const##L
+#define UWORD_CONSTANT(Const) Const##UL
+#define ERTS_UWORD_MAX ULONG_MAX
+#define ERTS_SWORD_MAX LONG_MAX
+#define ERTS_SWORD_MIN LONG_MIN
+#define ERTS_SIZEOF_ETERM SIZEOF_LONG
+#define ErtsStrToSint strtol
+#elif SIZEOF_VOID_P == SIZEOF_INT
+typedef unsigned int Eterm erts_align_attribute(sizeof(int));
+typedef unsigned int Uint  erts_align_attribute(sizeof(int));
+typedef int          Sint  erts_align_attribute(sizeof(int));
+#define SWORD_CONSTANT(Const) Const
+#define UWORD_CONSTANT(Const) Const##U
+#define ERTS_UWORD_MAX UINT_MAX
+#define ERTS_SWORD_MAX INT_MAX
+#define ERTS_SWORD_MIN INT_MIN
+#define ERTS_SIZEOF_ETERM SIZEOF_INT
+#define ErtsStrToSint strtol
+#elif SIZEOF_VOID_P == SIZEOF_LONG_LONG
+typedef unsigned long long Eterm erts_align_attribute(sizeof(long long));
+typedef unsigned long long Uint  erts_align_attribute(sizeof(long long));
+typedef long long          Sint  erts_align_attribute(sizeof(long long));
+#define SWORD_CONSTANT(Const) Const##LL
+#define UWORD_CONSTANT(Const) Const##ULL
+#define ERTS_UWORD_MAX ULLONG_MAX
+#define ERTS_SWORD_MAX LLONG_MAX
+#define ERTS_SWORD_MIN LLONG_MIN
+#define ERTS_SIZEOF_ETERM SIZEOF_LONG_LONG
+#if defined(__WIN32__)
+#define ErtsStrToSint _strtoi64
+#else
+#define ErtsStrToSint strtoll
+#endif
+#else
+#error Found no appropriate type to use for 'Eterm', 'Uint' and 'Sint'
+#endif
+typedef Uint UWord;
+typedef Sint SWord;
+#define ERTS_UINT_MAX ERTS_UWORD_MAX
+#define ERTS_SINT_MAX ERTS_SWORD_MAX
+typedef const void *ErtsCodePtr;
+typedef UWord BeamInstr;
+#ifndef HAVE_INT64
+#  if SIZEOF_LONG == 8
+#    define HAVE_INT64 1
+typedef unsigned long Uint64;
+typedef long          Sint64;
+#    define ErtsStrToSint64 strtol
+#  elif SIZEOF_LONG_LONG == 8
+#    define HAVE_INT64 1
+typedef unsigned long long Uint64;
+typedef long long          Sint64;
+#    define ErtsStrToSint64 strtoll
+#  else
+#    error "No 64-bit integer type found"
+#  endif
+#endif
+#ifndef ERTS_UINT64_MAX
+#  define ERTS_UINT64_MAX (~((Uint64) 0))
+#endif
+#ifndef ERTS_SINT64_MAX
+#  define ERTS_SINT64_MAX ((Sint64) ((((Uint64) 1) << 63)-1))
+#endif
+#ifndef ERTS_SINT64_MIN
+#  define ERTS_SINT64_MIN ((Sint64) ((((Uint64) 1) << 63)))
+#endif
+#if SIZEOF_LONG == 4
+typedef unsigned long Uint32;
+typedef long          Sint32;
+#elif SIZEOF_INT == 4
+typedef unsigned int Uint32;
+typedef int          Sint32;
+#else
+#error Found no appropriate type to use for 'Uint32' and 'Sint32'
+#endif
+#ifndef ERTS_UINT32_MAX
+#  define ERTS_UINT32_MAX (~((Uint32) 0))
+#endif
+#ifndef ERTS_SINT32_MAX
+#  define ERTS_SINT32_MAX ((Sint32) ((((Uint32) 1) << 31)-1))
+#endif
+#ifndef ERTS_SINT32_MIN
+#  define ERTS_SINT32_MIN ((Sint32) ((((Uint32) 1) << 31)))
+#endif
+#if SIZEOF_INT == 2
+typedef unsigned int Uint16;
+typedef int          Sint16;
+#elif SIZEOF_SHORT == 2
+typedef unsigned short Uint16;
+typedef short          Sint16;
+#else
+#error Found no appropriate type to use for 'Uint16' and 'Sint16'
+#endif
+#ifndef ERTS_UINT16_MAX
+#  define ERTS_UINT16_MAX (~((Uint16) 0))
+#endif
+#ifndef ERTS_SINT16_MAX
+#  define ERTS_SINT16_MAX ((Sint16) ((((Uint16) 1) << 15)-1))
+#endif
+#ifndef ERTS_SINT16_MIN
+#  define ERTS_SINT16_MIN ((Sint16) ((((Uint16) 1) << 15)))
+#endif
+#if CHAR_BIT == 8
+typedef unsigned char byte;
+#else
+#error Found no appropriate type to use for 'byte'
+#endif
+#if defined(ARCH_64) && !HAVE_INT64
+#error 64-bit architecture, but no appropriate type to use for Uint64 and Sint64 found
+#endif
+#ifdef WORDS_BIGENDIAN
+#  define ERTS_HUINT_HVAL_HIGH 0
+#  define ERTS_HUINT_HVAL_LOW 1
+#else
+#  define ERTS_HUINT_HVAL_HIGH 1
+#  define ERTS_HUINT_HVAL_LOW 0
+#endif
+#if ERTS_SIZEOF_TERM == 8
+typedef union {
+    Uint val;
+    Uint32 hval[2];
+} HUint;
+#elif ERTS_SIZEOF_TERM == 4
+typedef union {
+    Uint val;
+    Uint16 hval[2];
+} HUint;
+#else
+#error "Unsupported size of term"
+#endif
+#  define ERTS_EXTRA_DATA_ALIGN_SZ(X) \
+    (((size_t) 8) - (((size_t) (X)) & ((size_t) 7)))
+#include "erl_lock_check.h"
+int erts_send_warning_to_logger_str_nogl(char *);
+#include "erl_threads.h"
+#ifdef ERTS_WANT_BREAK_HANDLING
+extern erts_atomic32_t erts_break_requested;
+#    define ERTS_BREAK_REQUESTED \
+  ((int) erts_atomic32_read_nob(&erts_break_requested))
+void erts_do_break_handling(void);
+#endif
+extern erts_atomic32_t erts_writing_erl_crash_dump;
+extern erts_tsd_key_t erts_is_crash_dumping_key;
+#define ERTS_SOMEONE_IS_CRASH_DUMPING \
+  ((int) erts_atomic32_read_mb(&erts_writing_erl_crash_dump))
+#define ERTS_IS_CRASH_DUMPING \
+  ((int) (SWord) erts_tsd_get(erts_is_crash_dumping_key))
+#if defined(USE_BCOPY)
+#  define memcpy(a, b, c) bcopy((b), (a), (c))
+#  define memcmp(a, b, c) bcmp((a), (b), (c))
+#  define memzero(buf, len) bzero((buf), (len))
+#else
+#  define memzero(buf, len) memset((buf), '\0', (len))
+#endif
+#ifdef ISC32
+#  define signal	sigset
+#  define NO_ASINH
+#  define NO_ACOSH
+#  define NO_ATANH
+#  define NO_FTRUNCATE
+#  define SIG_SIGHOLD
+#  define _POSIX_SOURCE
+#  define _XOPEN_SOURCE
+#endif
+#ifdef QNX
+#  define SYS_SELECT_H
+#  define NO_ERF
+#  define NO_ERFC
+#  define isfinite(x) (fabs(x) != HUGE_VAL)
+#  define USE_MATHERR
+#  define HAVE_FINITE
+#endif
+#ifdef WANT_NONBLOCKING
+#  ifdef __WIN32__
+static unsigned long zero_value = 0, one_value = 1;
+#    define SET_BLOCKING(fd)	{ if (ioctlsocket((fd), FIONBIO, &zero_value) != 0) fprintf(stderr, "Error setting socket to non-blocking: %d\n", WSAGetLastError()); }
+#    define SET_NONBLOCKING(fd)	ioctlsocket((fd), FIONBIO, &one_value)
+#    define ERRNO_BLOCK EAGAIN
+#  else
+#    ifdef NB_FIONBIO
+#      include <sys/ioctl.h>
+  static const int zero_value = 0, one_value = 1;
+#      define SET_BLOCKING(fd)         ioctl((fd), FIONBIO, &zero_value)
+#      define SET_NONBLOCKING(fd)      ioctl((fd), FIONBIO, &one_value)
+#      define ERRNO_BLOCK EWOULDBLOCK
+#    else
+#      include <fcntl.h>
+#      ifdef NB_O_NDELAY
+#        define NB_FLAG O_NDELAY
+#        ifndef ERRNO_BLOCK
+#          define ERRNO_BLOCK EWOULDBLOCK
+#        endif
+#      else
+#        define NB_FLAG O_NONBLOCK
+#        define ERRNO_BLOCK EAGAIN
+#      endif
+#      define SET_BLOCKING(fd)         fcntl((fd), F_SETFL, \
+                                           fcntl((fd), F_GETFL, 0) & ~NB_FLAG)
+#      define SET_NONBLOCKING(fd)      fcntl((fd), F_SETFL, \
+                                           fcntl((fd), F_GETFL, 0) | NB_FLAG)
+#    endif
+#  endif
+#endif
+__decl_noreturn void __noreturn erts_exit(int n, const char*, ...);
+#define ERTS_INTR_EXIT	-1
+#define ERTS_ABORT_EXIT	-2
+#define ERTS_DUMP_EXIT	-3
+#define ERTS_ERROR_EXIT	-4
+#define ERTS_INTERNAL_ERROR(What) \
+    erts_exit(ERTS_ABORT_EXIT, "%s:%d:%s(): Internal error: %s\n", \
+	     __FILE__, __LINE__, __func__, What)
+UWord erts_sys_get_page_size(void);
+UWord erts_sys_get_large_page_size(void);
+Uint erts_sys_misc_mem_sz(void);
+char *erl_errno_id_unknown(char *str, int eno);
+void erts_errno_init(void);
+void erts_errno_late_init(void);
+#include "erl_printf.h"
+#define ERTS_PRINT_STDERR	((fmtfn_t)0)
+#define ERTS_PRINT_STDOUT	((fmtfn_t)1)
+#define ERTS_PRINT_FILE		((fmtfn_t)2)
+#define ERTS_PRINT_SBUF		((fmtfn_t)3)
+#define ERTS_PRINT_SNBUF	((fmtfn_t)4)
+#define ERTS_PRINT_DSBUF	((fmtfn_t)5)
+#define ERTS_PRINT_FD           ((fmtfn_t)6)
+typedef struct {
+    char *buf;
+    size_t size;
+} erts_print_sn_buf;
+int erts_print(fmtfn_t to, void *arg, const char *format, ...);
+int erts_putc(fmtfn_t to, void *arg, char);
+erts_dsprintf_buf_t *erts_create_logger_dsbuf(void);
+int erts_send_info_to_logger(Eterm, erts_dsprintf_buf_t *);
+int erts_send_warning_to_logger(Eterm, erts_dsprintf_buf_t *);
+int erts_send_error_to_logger(Eterm, erts_dsprintf_buf_t *);
+int erts_send_error_term_to_logger(Eterm, erts_dsprintf_buf_t *, Eterm);
+int erts_send_info_to_logger_str(Eterm, char *);
+int erts_send_warning_to_logger_str(Eterm, char *);
+int erts_send_error_to_logger_str(Eterm, char *);
+int erts_send_info_to_logger_nogl(erts_dsprintf_buf_t *);
+int erts_send_warning_to_logger_nogl(erts_dsprintf_buf_t *);
+int erts_send_error_to_logger_nogl(erts_dsprintf_buf_t *);
+int erts_send_info_to_logger_str_nogl(char *);
+int erts_send_error_to_logger_str_nogl(char *);
+typedef struct preload {
+    char *name;
+    int  size;
+    unsigned char* code;
+} Preload;
+typedef Eterm ErtsTracer;
+typedef struct __erts_osenv_t {
+    struct __env_rbtnode_t *tree;
+    int variable_count;
+    int content_size;
+} erts_osenv_t;
+extern char *erts_default_arg0;
+extern char os_type[];
+#if !defined(ERTS_HAVE_OS_MONOTONIC_TIME_SUPPORT)
+#  undef ERTS_ENSURE_OS_MONOTONIC_TIME
+#endif
+typedef struct {
+    int have_os_monotonic_time;
+    int have_corrected_os_monotonic_time;
+    ErtsMonotonicTime os_monotonic_time_unit;
+    ErtsMonotonicTime sys_clock_resolution;
+    struct {
+	Uint64 resolution;
+        Uint64 used_resolution;
+	char *func;
+	char *clock_id;
+	int locked_use;
+	int extended;
+    } os_monotonic_time_info;
+    struct {
+	Uint64 resolution;
+	char *func;
+	char *clock_id;
+	int locked_use;
+    } os_system_time_info;
+} ErtsSysInitTimeResult;
+#define ERTS_SYS_INIT_TIME_RESULT_INITER \
+    {0, 0, (ErtsMonotonicTime) -1, (ErtsMonotonicTime) 1}
+extern void erts_init_sys_time_sup(void);
+extern void sys_init_time(ErtsSysInitTimeResult *);
+extern void erts_late_sys_init_time(void);
+extern void erts_deliver_time(void);
+extern void erts_time_remaining(SysTimeval *);
+extern void erts_sys_init_float(void);
+typedef struct {
+    char* str;
+}ErtsSysDdllError;
+#define ERTS_SYS_DDLL_ERROR_INIT {NULL}
+extern void erts_sys_ddll_free_error(ErtsSysDdllError*);
+extern void erl_sys_ddll_init(void);
+extern int erts_sys_ddll_open(const char *path, void **handle, ErtsSysDdllError*);
+extern int erts_sys_ddll_open_noext(char *path, void **handle, ErtsSysDdllError*);
+extern int erts_sys_ddll_load_driver_init(void *handle, void **function);
+extern int erts_sys_ddll_load_nif_init(void *handle, void **function,ErtsSysDdllError*);
+extern int erts_sys_ddll_close2(void *handle, ErtsSysDdllError*);
+#define erts_sys_ddll_close(H) erts_sys_ddll_close2(H,NULL)
+extern void *erts_sys_ddll_call_init(void *function);
+extern void *erts_sys_ddll_call_nif_init(void *function);
+extern int erts_sys_ddll_sym2(void *handle, const char *name, void **function, ErtsSysDdllError*);
+#define erts_sys_ddll_sym(H,N,F) erts_sys_ddll_sym2(H,N,F,NULL)
+extern int erts_sys_ddll_vsym2(void *handle, const char *name, const char *vers, void **function, ErtsSysDdllError*);
+#define erts_sys_ddll_vsym(H,N,V,F) erts_sys_ddll_vsym2(H,N,V,F,NULL)
+extern char *erts_sys_ddll_error(int code);
+void erts_sys_main_thread(void);
+extern int erts_sys_prepare_crash_dump(int secs);
+extern void erts_sys_pre_init(void);
+extern void erts_sys_scheduler_init(void);
+extern void erl_sys_init(void);
+extern void erl_sys_late_init(void);
+extern void erl_sys_args(int *argc, char **argv);
+extern void erl_sys_schedule(int);
+void sys_tty_reset(int);
+int sys_max_files(void);
+void sys_init_io(void);
+Preload* sys_preloaded(void);
+unsigned char* sys_preload_begin(Preload*);
+void sys_preload_end(Preload*);
+int sys_get_key(int);
+void get_time(int *hour, int *minute, int *second);
+void get_date(int *year, int *month, int *day);
+void get_localtime(int *year, int *month, int *day,
+		   int *hour, int *minute, int *second);
+void get_universaltime(int *year, int *month, int *day,
+		       int *hour, int *minute, int *second);
+int seconds_to_univ(Sint64 seconds,
+		    Sint *year, Sint *month, Sint *day,
+		    Sint *hour, Sint *minute, Sint *second);
+int univ_to_seconds(Sint year, Sint month, Sint day,
+		    Sint hour, Sint minute, Sint second,
+		    Sint64* seconds);
+int univ_to_local(
+    Sint *year, Sint *month, Sint *day,
+		  Sint *hour, Sint *minute, Sint *second);
+int local_to_univ(Sint *year, Sint *month, Sint *day,
+		  Sint *hour, Sint *minute, Sint *second, int isdst);
+void get_now(Uint*, Uint*, Uint*);
+struct ErtsSchedulerData_;
+ErtsMonotonicTime erts_get_monotonic_time(struct ErtsSchedulerData_ *);
+ErtsMonotonicTime erts_get_time_offset(void);
+void
+erts_make_timestamp_value(Uint* megasec, Uint* sec, Uint* microsec,
+			  ErtsMonotonicTime mtime, ErtsMonotonicTime offset);
+void get_sys_now(Uint*, Uint*, Uint*);
+void set_break_quit(void (*)(void), void (*)(void));
+void os_flavor(char*, unsigned);
+void os_version(int*, int*, int*);
+#define HAVE_ERTS_CHECK_IO_DEBUG
+typedef struct {
+    int no_used_fds;
+    int no_driver_select_structs;
+    int no_enif_select_structs;
+} ErtsCheckIoDebugInfo;
+int erts_check_io_debug(ErtsCheckIoDebugInfo *ip);
+int erts_sys_is_area_readable(char *start, char *stop);
+#define SYS_DEFAULT_FLOAT_DECIMALS 20
+void init_sys_float(void);
+int sys_chars_to_double(char*, double*);
+int sys_double_to_chars(double, char*, size_t);
+int sys_double_to_chars_ext(double, char*, size_t, size_t);
+int sys_double_to_chars_fast(double, char*, int, int, int);
+void sys_get_pid(char *, size_t);
+int sys_get_hostname(char *buf, size_t size);
+int erts_sys_explicit_8bit_getenv(char *key, char *value, size_t *size);
+int erts_sys_explicit_8bit_putenv(char *key, char *value);
+int erts_sys_explicit_host_getenv(const char *key, char *value, size_t *size);
+const erts_osenv_t *erts_sys_rlock_global_osenv(void);
+void erts_sys_runlock_global_osenv(void);
+erts_osenv_t *erts_sys_rwlock_global_osenv(void);
+void erts_sys_rwunlock_global_osenv(void);
+char *erts_read_env(char *key);
+void erts_free_read_env(void *value);
+#if defined(ERTS_THR_HAVE_SIG_FUNCS) &&                         \
+    (!defined(ETHR_UNUSABLE_SIGUSRX) || defined(SIGRTMIN))
+extern void sys_thr_resume(erts_tid_t tid);
+extern void sys_thr_suspend(erts_tid_t tid);
+#ifdef SIGRTMIN
+#define ERTS_SYS_SUSPEND_SIGNAL (SIGRTMIN+1)
+#else
+#define ERTS_SYS_SUSPEND_SIGNAL (SIGUSR2)
+#endif
+#endif
+#define SYS_ALLOC_OPT_TRIM_THRESHOLD 0
+#define SYS_ALLOC_OPT_TOP_PAD        1
+#define SYS_ALLOC_OPT_MMAP_THRESHOLD 2
+#define SYS_ALLOC_OPT_MMAP_MAX       3
+#define ERTS_DEFAULT_TRIM_THRESHOLD  (128 * 1024)
+#define ERTS_DEFAULT_TOP_PAD         0
+#define ERTS_DEFAULT_MMAP_THRESHOLD  (128 * 1024)
+#define ERTS_DEFAULT_MMAP_MAX        64
+int sys_alloc_opt(int, int);
+typedef struct {
+  int trim_threshold;
+  int top_pad;
+  int mmap_threshold;
+  int mmap_max;
+} SysAllocStat;
+void sys_alloc_stat(SysAllocStat *);
+extern UWord sys_page_size;
+extern UWord sys_large_page_size;
+#if defined(DEBUG) || defined(ERTS_ENABLE_LOCK_CHECK)
+#undef ERTS_REFC_DEBUG
+#define ERTS_REFC_DEBUG
+#endif
+typedef erts_atomic_t erts_refc_t;
+ERTS_GLB_INLINE void erts_refc_init(erts_refc_t *refcp, erts_aint_t val);
+ERTS_GLB_INLINE void erts_refc_inc(erts_refc_t *refcp, erts_aint_t min_val);
+ERTS_GLB_INLINE erts_aint_t erts_refc_inc_unless(erts_refc_t *refcp,
+                                                 erts_aint_t unless_val,
+                                                 erts_aint_t min_val);
+ERTS_GLB_INLINE void erts_refc_inc_if(erts_refc_t *refcp,
+                                      erts_aint_t if_val,
+                                      erts_aint_t min_val);
+ERTS_GLB_INLINE erts_aint_t erts_refc_inctest(erts_refc_t *refcp,
+					      erts_aint_t min_val);
+ERTS_GLB_INLINE void erts_refc_dec(erts_refc_t *refcp, erts_aint_t min_val);
+ERTS_GLB_INLINE erts_aint_t erts_refc_dectest(erts_refc_t *refcp,
+					      erts_aint_t min_val);
+ERTS_GLB_INLINE void erts_refc_add(erts_refc_t *refcp, erts_aint_t diff,
+				   erts_aint_t min_val);
+ERTS_GLB_INLINE erts_aint_t erts_refc_read(erts_refc_t *refcp,
+					   erts_aint_t min_val);
+#if ERTS_GLB_INLINE_INCL_FUNC_DEF
+ERTS_GLB_INLINE void
+erts_refc_init(erts_refc_t *refcp, erts_aint_t val)
+{
+    erts_atomic_init_nob((erts_atomic_t *) refcp, val);
+}
+ERTS_GLB_INLINE void
+erts_refc_inc(erts_refc_t *refcp, erts_aint_t min_val)
+{
+#ifdef ERTS_REFC_DEBUG
+    erts_aint_t val = erts_atomic_inc_read_nob((erts_atomic_t *) refcp);
+    if (val < min_val)
+	erts_exit(ERTS_ABORT_EXIT,
+		 "erts_refc_inc(): Bad refc found (refc=%ld < %ld)!\n",
+		 val, min_val);
+#else
+    erts_atomic_inc_nob((erts_atomic_t *) refcp);
+#endif
+}
+ERTS_GLB_INLINE erts_aint_t
+erts_refc_inc_unless(erts_refc_t *refcp,
+                     erts_aint_t unless_val,
+                     erts_aint_t min_val)
+{
+    erts_aint_t val = erts_atomic_read_nob((erts_atomic_t *) refcp);
+    while (1) {
+        erts_aint_t exp, new_value;
+#ifdef ERTS_REFC_DEBUG
+        if (val < min_val)
+            erts_exit(ERTS_ABORT_EXIT,
+                      "erts_refc_inc_unless(): Bad refc found (refc=%ld < %ld)!\n",
+                      val, min_val);
+#endif
+        if (val == unless_val)
+            return val;
+        new_value = val + 1;
+        exp = val;
+        val = erts_atomic_cmpxchg_nob((erts_atomic_t *) refcp, new_value, exp);
+        if (val == exp)
+            return new_value;
+    }
+}
+ERTS_GLB_INLINE void
+erts_refc_inc_if(erts_refc_t *refcp,
+                 erts_aint_t if_val,
+                 erts_aint_t min_val)
+{
+    erts_aint_t val = erts_atomic_read_nob((erts_atomic_t *) refcp);
+#ifdef ERTS_REFC_DEBUG
+    if (val < min_val)
+        erts_exit(ERTS_ABORT_EXIT,
+                  "erts_refc_inc_unless(): Bad refc found (refc=%ld < %ld)!\n",
+                  val, min_val);
+#endif
+    if (val == if_val) {
+        erts_atomic_cmpxchg_nob((erts_atomic_t *) refcp, val+1, val);
+    }
+}
+ERTS_GLB_INLINE erts_aint_t
+erts_refc_inctest(erts_refc_t *refcp, erts_aint_t min_val)
+{
+    erts_aint_t val = erts_atomic_inc_read_nob((erts_atomic_t *) refcp);
+#ifdef ERTS_REFC_DEBUG
+    if (val < min_val)
+	erts_exit(ERTS_ABORT_EXIT,
+		 "erts_refc_inctest(): Bad refc found (refc=%ld < %ld)!\n",
+		 val, min_val);
+#endif
+    return val;
+}
+ERTS_GLB_INLINE void
+erts_refc_dec(erts_refc_t *refcp, erts_aint_t min_val)
+{
+#ifdef ERTS_REFC_DEBUG
+    erts_aint_t val = erts_atomic_dec_read_nob((erts_atomic_t *) refcp);
+    if (val < min_val)
+	erts_exit(ERTS_ABORT_EXIT,
+		 "erts_refc_dec(): Bad refc found (refc=%ld < %ld)!\n",
+		 val, min_val);
+#else
+    erts_atomic_dec_nob((erts_atomic_t *) refcp);
+#endif
+}
+ERTS_GLB_INLINE erts_aint_t
+erts_refc_dectest(erts_refc_t *refcp, erts_aint_t min_val)
+{
+    erts_aint_t val = erts_atomic_dec_read_nob((erts_atomic_t *) refcp);
+#ifdef ERTS_REFC_DEBUG
+    if (val < min_val)
+	erts_exit(ERTS_ABORT_EXIT,
+		 "erts_refc_dectest(): Bad refc found (refc=%ld < %ld)!\n",
+		 val, min_val);
+#endif
+    return val;
+}
+ERTS_GLB_INLINE void
+erts_refc_add(erts_refc_t *refcp, erts_aint_t diff, erts_aint_t min_val)
+{
+#ifdef ERTS_REFC_DEBUG
+    erts_aint_t val = erts_atomic_add_read_nob((erts_atomic_t *) refcp, diff);
+    if (val < min_val)
+	erts_exit(ERTS_ABORT_EXIT,
+		 "erts_refc_add(%ld): Bad refc found (refc=%ld < %ld)!\n",
+		 diff, val, min_val);
+#else
+    erts_atomic_add_nob((erts_atomic_t *) refcp, diff);
+#endif
+}
+ERTS_GLB_INLINE erts_aint_t
+erts_refc_read(erts_refc_t *refcp, erts_aint_t min_val)
+{
+    erts_aint_t val = erts_atomic_read_nob((erts_atomic_t *) refcp);
+#ifdef ERTS_REFC_DEBUG
+    if (val < min_val)
+	erts_exit(ERTS_ABORT_EXIT,
+		 "erts_refc_read(): Bad refc found (refc=%ld < %ld)!\n",
+		 val, min_val);
+#endif
+    return val;
+}
+#endif
+ERTS_GLB_INLINE void *sys_memcpy(void *dest, const void *src, size_t n);
+ERTS_GLB_INLINE void *sys_memmove(void *dest, const void *src, size_t n);
+ERTS_GLB_INLINE int sys_memcmp(const void *s1, const void *s2, size_t n);
+ERTS_GLB_INLINE void *sys_memset(void *s, int c, size_t n);
+ERTS_GLB_INLINE void *sys_memzero(void *s, size_t n);
+ERTS_GLB_INLINE void *sys_memchr(const void *s, int c, size_t n);
+ERTS_GLB_INLINE void *sys_memrchr(const void *s, int c, size_t n);
+ERTS_GLB_INLINE int sys_strcmp(const char *s1, const char *s2);
+ERTS_GLB_INLINE int sys_strncmp(const char *s1, const char *s2, size_t n);
+ERTS_GLB_INLINE char *sys_strcpy(char *dest, const char *src);
+ERTS_GLB_INLINE char *sys_strncpy(char *dest, const char *src, size_t n);
+ERTS_GLB_INLINE size_t sys_strlen(const char *s);
+#if ERTS_GLB_INLINE_INCL_FUNC_DEF
+ERTS_GLB_INLINE void *sys_memcpy(void *dest, const void *src, size_t n)
+{
+    ASSERT(dest != NULL && src != NULL);
+    return memcpy(dest,src,n);
+}
+ERTS_GLB_INLINE void *sys_memmove(void *dest, const void *src, size_t n)
+{
+    ASSERT(dest != NULL && src != NULL);
+    return memmove(dest,src,n);
+}
+ERTS_GLB_INLINE int sys_memcmp(const void *s1, const void *s2, size_t n)
+{
+    ASSERT(s1 != NULL && s2 != NULL);
+    return memcmp(s1,s2,n);
+}
+ERTS_GLB_INLINE void *sys_memset(void *s, int c, size_t n)
+{
+    ASSERT(s != NULL);
+    return memset(s,c,n);
+}
+ERTS_GLB_INLINE void *sys_memzero(void *s, size_t n)
+{
+    ASSERT(s != NULL);
+    return memset(s,'\0',n);
+}
+ERTS_GLB_INLINE void *sys_memchr(const void *s, int c, size_t n)
+{
+    ASSERT(s != NULL);
+    return (void*)memchr(s, c, n);
+}
+ERTS_GLB_INLINE void *sys_memrchr(const void *s, int c, size_t n)
+{
+    ASSERT(s != NULL);
+#ifdef HAVE_MEMRCHR
+    return (void*)memrchr(s, c, n);
+#else
+    {
+        const unsigned char* ptr = (const unsigned char*)s + n;
+        while (ptr != s)
+            if (*(--ptr) == (unsigned char)c)
+                return (void*)ptr;
+        return NULL;
+    }
+#endif
+}
+ERTS_GLB_INLINE int sys_strcmp(const char *s1, const char *s2)
+{
+    ASSERT(s1 != NULL && s2 != NULL);
+    return strcmp(s1,s2);
+}
+ERTS_GLB_INLINE int sys_strncmp(const char *s1, const char *s2, size_t n)
+{
+    ASSERT(s1 != NULL && s2 != NULL);
+    return strncmp(s1,s2,n);
+}
+ERTS_GLB_INLINE char *sys_strcpy(char *dest, const char *src)
+{
+    ASSERT(dest != NULL && src != NULL);
+    return strcpy(dest,src);
+}
+ERTS_GLB_INLINE char *sys_strncpy(char *dest, const char *src, size_t n)
+{
+    ASSERT(dest != NULL && src != NULL);
+    return strncpy(dest,src,n);
+}
+ERTS_GLB_INLINE size_t sys_strlen(const char *s)
+{
+    ASSERT(s != NULL);
+    return strlen(s);
+}
+#endif
+#define sys_fp_alloc     sys_alloc
+#define sys_fp_realloc   sys_realloc
+#define sys_fp_free      sys_free
+#define sys_fp_memcpy    memcpy
+#define sys_fp_memmove   memmove
+#define sys_fp_memcmp    memcmp
+#define sys_fp_memset    memset
+#define sys_fp_strcmp    strcmp
+#define sys_fp_strncmp   strncmp
+#define sys_fp_strcpy    strcpy
+#define sys_fp_strncpy   strncpy
+#define sys_fp_strlen    strlen
+#define FD_READY 1
+#define FD_CONTINUE 2
+#define FD_ERROR 3
+#define get_int64(s) (((Uint64)(((byte*) (s))[0]) << 56) | \
+                      (((Uint64)((byte*) (s))[1]) << 48) | \
+                      (((Uint64)((byte*) (s))[2]) << 40) | \
+                      (((Uint64)((byte*) (s))[3]) << 32) | \
+                      (((Uint64)((byte*) (s))[4]) << 24) | \
+                      (((Uint64)((byte*) (s))[5]) << 16) | \
+                      (((Uint64)((byte*) (s))[6]) << 8)  | \
+                      (((Uint64)((byte*) (s))[7])))
+#define put_int64(i, s) do {((byte*)(s))[0] = (byte)((Sint64)(i) >> 56) & 0xff;\
+                            ((byte*)(s))[1] = (byte)((Sint64)(i) >> 48) & 0xff;\
+                            ((byte*)(s))[2] = (byte)((Sint64)(i) >> 40) & 0xff;\
+                            ((byte*)(s))[3] = (byte)((Sint64)(i) >> 32) & 0xff;\
+                            ((byte*)(s))[4] = (byte)((Sint64)(i) >> 24) & 0xff;\
+                            ((byte*)(s))[5] = (byte)((Sint64)(i) >> 16) & 0xff;\
+                            ((byte*)(s))[6] = (byte)((Sint64)(i) >> 8)  & 0xff;\
+                            ((byte*)(s))[7] = (byte)((Sint64)(i))       & 0xff;\
+                           } while (0)
+#define put_little_int64(i, s) \
+    do {\
+        ((byte*)(s))[7] = (byte)((Sint64)(i) >> 56); \
+        ((byte*)(s))[6] = (byte)((Sint64)(i) >> 48); \
+        ((byte*)(s))[5] = (byte)((Sint64)(i) >> 40); \
+        ((byte*)(s))[4] = (byte)((Sint64)(i) >> 32); \
+        ((byte*)(s))[3] = (byte)((Sint64)(i) >> 24); \
+        ((byte*)(s))[2] = (byte)((Sint64)(i) >> 16); \
+        ((byte*)(s))[1] = (byte)((Sint64)(i) >> 8);  \
+        ((byte*)(s))[0] = (byte)((Sint64)(i));       \
+      } while (0)
+#define get_int32(s) ((((byte*) (s))[0] << 24) | \
+                      (((byte*) (s))[1] << 16) | \
+                      (((byte*) (s))[2] << 8)  | \
+                      (((byte*) (s))[3]))
+#define get_little_int32(s) ((((byte*) (s))[3] << 24) | \
+			     (((byte*) (s))[2] << 16)  | \
+			     (((byte*) (s))[1] << 8) | \
+			     (((byte*) (s))[0]))
+#define get_uint32(s) ((Uint32)get_int32(s))
+#define put_int32(i, s) do {((byte*)(s))[0] = (byte)((i) >> 24) & 0xff;  \
+                            ((byte*)(s))[1] = (byte)((i) >> 16) & 0xff;  \
+                            ((byte*)(s))[2] = (byte)((i) >> 8)  & 0xff;  \
+                            ((byte*)(s))[3] = (byte)(i)         & 0xff;} \
+                        while (0)
+#define put_little_int32(i, s) \
+    do {\
+        ((byte*)(s))[3] = (byte)((i) >> 24); \
+        ((byte*)(s))[2] = (byte)((i) >> 16); \
+        ((byte*)(s))[1] = (byte)((i) >> 8);  \
+        ((byte*)(s))[0] = (byte)(i);         \
+      } while (0)
+#define get_int24(s) ((((byte*) (s))[0] << 16) | \
+                      (((byte*) (s))[1] << 8)  | \
+                      (((byte*) (s))[2]))
+#define put_int24(i, s) do {((byte*)(s))[0] = (byte)((i) >> 16) & 0xff;  \
+                            ((byte*)(s))[1] = (byte)((i) >> 8)  & 0xff;  \
+                            ((byte*)(s))[2] = (byte)(i)         & 0xff;} \
+                        while (0)
+#define get_int16(s) ((((byte*)  (s))[0] << 8) | \
+                      (((byte*)  (s))[1]))
+#define put_int16(i, s) do {((byte*)(s))[0] = (byte)((i) >> 8) & 0xff;  \
+                            ((byte*)(s))[1] = (byte)(i)        & 0xff;} \
+                        while (0)
+#define get_int8(s) ((((byte*)  (s))[0] ))
+#define put_int8(i, s) do {((byte*)(s))[0] = (i) & 0xff;} while (0)
+#ifdef DEBUG
+void erl_debug(char* format, ...);
+void erl_bin_write(unsigned char *, int, int);
+#  define DEBUGF(x) erl_debug x
+#else
+#  define DEBUGF(x)
+#endif
+#ifndef MAX
+#define MAX(A, B) ((A) > (B) ? (A) : (B))
+#endif
+#ifndef MIN
+#define MIN(A, B) ((A) < (B) ? (A) : (B))
+#endif
+#ifdef __WIN32__
+#ifdef ARCH_64
+#define ERTS_ALLOC_ALIGN_BYTES 16
+#define ERTS_SMALL_ABS(Small) _abs64(Small)
+#else
+#define ERTS_ALLOC_ALIGN_BYTES 8
+#define ERTS_SMALL_ABS(Small) labs(Small)
+#endif
+#else
+#define ERTS_ALLOC_ALIGN_BYTES 8
+#define ERTS_SMALL_ABS(Small) labs(Small)
+#endif
+#ifndef ERTS_HAVE_ERTS_SYS_ALIGNED_ALLOC
+#  define ERTS_HAVE_ERTS_SYS_ALIGNED_ALLOC 0
+#endif
+#ifdef __WIN32__
+void call_break_handler(void);
+char* last_error(void);
+char* win32_errorstr(int);
+#endif
+#define ERL_FILENAME_UNKNOWN   (0)
+#define ERL_FILENAME_LATIN1    (1)
+#define ERL_FILENAME_UTF8      (2)
+#define ERL_FILENAME_UTF8_MAC  (3)
+#define ERL_FILENAME_WIN_WCHAR (4)
+#define ERL_FILENAME_WARNING_WARNING (0)
+#define ERL_FILENAME_WARNING_IGNORE (1)
+#define ERL_FILENAME_WARNING_ERROR (2)
+#define ERL_PRINTABLE_CHARACTERS_LATIN1 (0)
+#define ERL_PRINTABLE_CHARACTERS_UNICODE (1)
+int erts_get_native_filename_encoding(void);
+void erts_set_user_requested_filename_encoding(int encoding, int warning);
+int erts_get_user_requested_filename_encoding(void);
+int erts_get_filename_warning_type(void);
+void erts_set_printable_characters(int range);
+int erts_get_printable_characters(void);
+void erts_init_sys_common_misc(void);
+ERTS_GLB_INLINE Sint erts_raw_env_7bit_ascii_char_need(int encoding);
+ERTS_GLB_INLINE byte *erts_raw_env_7bit_ascii_char_put(byte c, byte *p,
+                                                       int encoding);
+ERTS_GLB_INLINE int  erts_raw_env_char_is_7bit_ascii_char(byte c, byte *p,
+                                                          int encoding);
+ERTS_GLB_INLINE byte *erts_raw_env_next_char(byte *p, int encoding);
+#if ERTS_GLB_INLINE_INCL_FUNC_DEF
+ERTS_GLB_INLINE Sint
+erts_raw_env_7bit_ascii_char_need(int encoding)
+{
+    return (encoding == ERL_FILENAME_WIN_WCHAR) ? 2 : 1;
+}
+ERTS_GLB_INLINE byte *
+erts_raw_env_7bit_ascii_char_put(byte c,
+                                 byte *p,
+                                 int encoding)
+{
+    *(p++) = c;
+    if (encoding == ERL_FILENAME_WIN_WCHAR)
+        *(p++) = 0;
+    return p;
+}
+ERTS_GLB_INLINE int
+erts_raw_env_char_is_7bit_ascii_char(byte c,
+                                     byte *p,
+                                     int encoding)
+{
+    if (encoding == ERL_FILENAME_WIN_WCHAR)
+        return (p[0] == c) & (p[1] == 0);
+    else
+        return p[0] == c;
+}
+ERTS_GLB_INLINE byte *
+erts_raw_env_next_char(byte *p, int encoding)
+{
+    if (encoding == ERL_FILENAME_WIN_WCHAR)
+        return p + 2;
+    else
+        return p + 1;
+}
+#endif
+#define ERTS_TTYSL_DRV_CONTROL_MAGIC_NUMBER  0x018b0900U
+#define ERTS_INET_DRV_CONTROL_MAGIC_NUMBER   0x03f1a300U
+#define ERTS_SPAWN_DRV_CONTROL_MAGIC_NUMBER  0x04c76a00U
+#define ERTS_FORKER_DRV_CONTROL_MAGIC_NUMBER 0x050a7800U
+#define ERTS_ATTR_WUR
+#define ERTS_ATTR_ALLOC_SIZE(SZPOS)
+#define ERTS_ATTR_MALLOC_U
+#define ERTS_ATTR_MALLOC_US(SZPOS)
+#define ERTS_ATTR_MALLOC_UD(DTOR, PTRPOS)
+#define ERTS_ATTR_MALLOC_USD(SZPOS, DTOR, PTRPOS)
+#define ERTS_ATTR_MALLOC_D(DTOR, PTRPOS)
+#ifdef __has_attribute
+#  if __has_attribute(warn_unused_result)
+#    undef  ERTS_ATTR_WUR
+#    define ERTS_ATTR_WUR __attribute__((warn_unused_result))
+#  endif
+#  if __has_attribute(alloc_size)
+#    undef  ERTS_ATTR_ALLOC_SIZE
+#    define ERTS_ATTR_ALLOC_SIZE(SZPOS) __attribute__((alloc_size(SZPOS)))
+#  endif
+#  if __has_attribute(malloc)
+#    undef  ERTS_ATTR_MALLOC_U
+#    define ERTS_ATTR_MALLOC_U __attribute__((malloc)) ERTS_ATTR_WUR
+#    undef  ERTS_ATTR_MALLOC_US
+#    define ERTS_ATTR_MALLOC_US(SZPOS)                                 \
+         __attribute__((malloc))                                       \
+         ERTS_ATTR_ALLOC_SIZE(SZPOS)                                   \
+         ERTS_ATTR_WUR
+#    undef  ERTS_ATTR_MALLOC_D
+#    if defined(__GNUC__) && __GNUC__ >= 11
+#      define ERTS_ATTR_MALLOC_D(DTOR, PTRPOS)                         \
+         __attribute__((malloc(DTOR,PTRPOS)))                          \
+         ERTS_ATTR_WUR
+#    else
+#      define ERTS_ATTR_MALLOC_D(DTOR, PTRPOS)                         \
+         ERTS_ATTR_WUR
+#    endif
+#    undef  ERTS_ATTR_MALLOC_UD
+#    define ERTS_ATTR_MALLOC_UD(DTOR, PTRPOS)                          \
+       ERTS_ATTR_MALLOC_U                                              \
+       ERTS_ATTR_MALLOC_D(DTOR, PTRPOS)
+#    undef  ERTS_ATTR_MALLOC_USD
+#    define ERTS_ATTR_MALLOC_USD(SZPOS, DTOR, PTRPOS)                  \
+       ERTS_ATTR_MALLOC_US(SZPOS)                                      \
+       ERTS_ATTR_MALLOC_D(DTOR, PTRPOS)
+#  endif
+#endif
+#endif

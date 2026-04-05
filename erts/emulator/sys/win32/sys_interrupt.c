@@ -1,0 +1,101 @@
+#ifdef HAVE_CONFIG_H
+#  include "config.h"
+#endif
+#define ERTS_WANT_BREAK_HANDLING
+#include "sys.h"
+#include "erl_alloc.h"
+#include "erl_thr_progress.h"
+#include "erl_driver.h"
+#if defined(__GNUC__)
+#  define WIN_SYS_INLINE __inline__
+#elif defined(__WIN32__)
+#  define WIN_SYS_INLINE __forceinline
+#endif
+erts_atomic32_t erts_break_requested;
+#define ERTS_SET_BREAK_REQUESTED \
+  erts_atomic32_set_nob(&erts_break_requested, (erts_aint32_t) 1)
+#define ERTS_UNSET_BREAK_REQUESTED \
+  erts_atomic32_set_nob(&erts_break_requested, (erts_aint32_t) 0)
+extern int nohup;
+HANDLE erts_sys_break_event = NULL;
+void erts_do_break_handling(void)
+{
+    erts_thr_progress_block();
+    do_break();
+    ResetEvent(erts_sys_break_event);
+    ERTS_UNSET_BREAK_REQUESTED;
+    erts_thr_progress_unblock();
+}
+BOOL WINAPI ctrl_handler_ignore_break(DWORD dwCtrlType)
+{
+    switch (dwCtrlType) {
+    case CTRL_C_EVENT:
+    case CTRL_BREAK_EVENT:
+	return TRUE;
+	break;
+    case CTRL_LOGOFF_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+	if (nohup)
+	    return TRUE;
+    case CTRL_CLOSE_EVENT:
+	erts_exit(0, "");
+	break;
+    }
+    return TRUE;
+}
+void erts_set_ignore_break(void) {
+    SetConsoleCtrlHandler(ctrl_handler_ignore_break, TRUE);
+}
+BOOL WINAPI ctrl_handler_replace_intr(DWORD dwCtrlType)
+{
+    switch (dwCtrlType) {
+    case CTRL_C_EVENT:
+	return FALSE;
+    case CTRL_BREAK_EVENT:
+        if (ERTS_BREAK_REQUESTED) {
+            erts_exit(ERTS_INTR_EXIT, "");
+        }
+	SetEvent(erts_sys_break_event);
+	break;
+    case CTRL_LOGOFF_EVENT:
+	if (nohup)
+	    return TRUE;
+    case CTRL_CLOSE_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+	erts_exit(0, "");
+	break;
+    }
+    return TRUE;
+}
+void erts_replace_intr(void) {
+    HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD dwOriginalInMode = 0;
+    if (GetConsoleMode(hIn, &dwOriginalInMode)) {
+	SetConsoleMode(hIn, dwOriginalInMode & ~ENABLE_PROCESSED_INPUT);
+    }
+    SetConsoleCtrlHandler(ctrl_handler_replace_intr, TRUE);
+}
+BOOL WINAPI ctrl_handler(DWORD dwCtrlType)
+{
+    switch (dwCtrlType) {
+    case CTRL_C_EVENT:
+    case CTRL_BREAK_EVENT:
+        if (ERTS_BREAK_REQUESTED) {
+            erts_exit(ERTS_INTR_EXIT, "");
+        }
+	SetEvent(erts_sys_break_event);
+	break;
+    case CTRL_LOGOFF_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+	if (nohup)
+	    return TRUE;
+    case CTRL_CLOSE_EVENT:
+	erts_exit(0, "");
+	break;
+    }
+    return TRUE;
+}
+void init_break_handler()
+{
+    SetConsoleCtrlHandler(ctrl_handler, TRUE);
+}
