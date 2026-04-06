@@ -1,0 +1,210 @@
+#if !defined(ETHREAD_GCC_NATIVE_H__) && ETHR_GCC_COMPILER
+#define ETHREAD_GCC_NATIVE_H__
+#ifndef ETHR_MEMBAR
+#  include "ethr_membar.h"
+#endif
+#define ETHR_GCC_VERSIONS_MASK__ 28
+#undef ETHR_GCC_VOLATILE_STORE_IS_ATOMIC_STORE__
+#undef ETHR_GCC_VOLATILE_STORE_IS_ATOMIC_STORE_RELB__
+#undef ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD__
+#undef ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD_ACQB__
+#undef ETHR_GCC_RELAXED_VERSIONS__
+#undef ETHR_GCC_RELAXED_MOD_VERSIONS__
+#undef ETHR_GCC_ACQB_VERSIONS__
+#undef ETHR_GCC_ACQB_MOD_VERSIONS__
+#undef ETHR_GCC_RELB_VERSIONS__
+#undef ETHR_GCC_RELB_MOD_VERSIONS__
+#undef ETHR_GCC_MB_MOD_VERSIONS__
+#undef ETHR_TRUST_GCC_ATOMIC_BUILTINS_MEMORY_BARRIERS__
+#define ETHR_TRUST_GCC_ATOMIC_BUILTINS_MEMORY_BARRIERS__ \
+    ETHR_TRUST_GCC_ATOMIC_BUILTINS_MEMORY_BARRIERS
+#undef ETHR___atomic_load_ACQUIRE_barrier_bug
+#if ETHR_GCC_COMPILER != ETHR_GCC_COMPILER_TRUE
+#if ETHR_GCC_COMPILER == ETHR_GCC_COMPILER_CLANG \
+    && defined(__apple_build_version__)          \
+    && __clang_major__ >= 12
+#    define ETHR___atomic_load_ACQUIRE_barrier_bug 0
+#    undef ETHR_TRUST_GCC_ATOMIC_BUILTINS_MEMORY_BARRIERS__
+#    define ETHR_TRUST_GCC_ATOMIC_BUILTINS_MEMORY_BARRIERS__ 1
+#  else
+#    define ETHR___atomic_load_ACQUIRE_barrier_bug ETHR_GCC_VERSIONS_MASK__
+#  endif
+#elif !ETHR_AT_LEAST_GCC_VSN__(4, 8, 0)
+#  define ETHR___atomic_load_ACQUIRE_barrier_bug ETHR_GCC_VERSIONS_MASK__
+#elif ETHR_AT_LEAST_GCC_VSN__(8, 3, 0) \
+    && (defined(__arm64__) || defined(__aarch64__) || defined(__arm__)) \
+    && ETHR_SIZEOF_PTR == 8
+#    define ETHR___atomic_load_ACQUIRE_barrier_bug 0
+#    undef ETHR_TRUST_GCC_ATOMIC_BUILTINS_MEMORY_BARRIERS__
+#    define ETHR_TRUST_GCC_ATOMIC_BUILTINS_MEMORY_BARRIERS__ 1
+#elif ETHR_AT_LEAST_GCC_VSN__(9, 3, 0) \
+    && (defined(__powerpc__) || defined(__ppc__) || defined(__powerpc64__)) \
+    && ETHR_SIZEOF_PTR == 8
+#    define ETHR___atomic_load_ACQUIRE_barrier_bug 0
+#    undef ETHR_TRUST_GCC_ATOMIC_BUILTINS_MEMORY_BARRIERS__
+#    define ETHR_TRUST_GCC_ATOMIC_BUILTINS_MEMORY_BARRIERS__ 1
+#else
+#  if ETHR_SIZEOF_PTR == 8
+#    define ETHR___atomic_load_ACQUIRE_barrier_bug \
+    (~(8|4) & ETHR_GCC_VERSIONS_MASK__)
+#  elif ETHR_SIZEOF_PTR == 4
+#    define ETHR___atomic_load_ACQUIRE_barrier_bug \
+    (~4 & ETHR_GCC_VERSIONS_MASK__)
+#  else
+#    error word size not supported
+#  endif
+#endif
+#define ETHR_GCC_VOLATILE_STORE_IS_ATOMIC_STORE__ 0
+#define ETHR_GCC_VOLATILE_STORE_IS_ATOMIC_STORE_RELB__ 0
+#define ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD__ 0
+#define ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD_ACQB__ 0
+#define ETHR_GCC_RELAXED_VERSIONS__ ETHR_GCC_VERSIONS_MASK__
+#define ETHR_GCC_RELAXED_MOD_VERSIONS__ ETHR_GCC_VERSIONS_MASK__
+#if ETHR_TRUST_GCC_ATOMIC_BUILTINS_MEMORY_BARRIERS__
+#  define ETHR_GCC_ACQB_VERSIONS__ ETHR_GCC_VERSIONS_MASK__
+#  define ETHR_GCC_ACQB_MOD_VERSIONS__ ETHR_GCC_VERSIONS_MASK__
+#  define ETHR_GCC_RELB_VERSIONS__ ETHR_GCC_VERSIONS_MASK__
+#  define ETHR_GCC_RELB_MOD_VERSIONS__ ETHR_GCC_VERSIONS_MASK__
+#else
+#  define ETHR_GCC_ACQB_VERSIONS__ 0
+#  define ETHR_GCC_ACQB_MOD_VERSIONS__ 0
+#  define ETHR_GCC_RELB_VERSIONS__ 0
+#  define ETHR_GCC_RELB_MOD_VERSIONS__ 0
+#endif
+#define ETHR_GCC_MB_MOD_VERSIONS__ \
+    (ETHR_GCC_VERSIONS_MASK__ & ~ETHR_HAVE___atomic_compare_exchange_n)
+#if ETHR_SIZEOF_PTR == 8
+#  define ETHR_GCC_VOLATILE_BIT_MASK__ 12
+#elif ETHR_SIZEOF_PTR == 4
+#  define ETHR_GCC_VOLATILE_BIT_MASK__ 4
+#endif
+#if defined(__i386__) || defined(__x86_64__) || defined(__sparc__)	\
+    || defined(__powerpc__) || defined(__ppc__) || defined(__mips__)	\
+    || defined(__alpha__) || defined(__ia64__)
+#  undef ETHR_GCC_VOLATILE_STORE_IS_ATOMIC_STORE__
+#  define ETHR_GCC_VOLATILE_STORE_IS_ATOMIC_STORE__ ETHR_GCC_VOLATILE_BIT_MASK__
+#  undef ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD__
+#  define ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD__ ETHR_GCC_VOLATILE_BIT_MASK__
+#elif defined(__arm__)
+#  undef ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD__
+#  define ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD__ ETHR_GCC_VOLATILE_BIT_MASK__
+#endif
+#if defined(__ia64__)
+#  undef ETHR_GCC_VOLATILE_STORE_IS_ATOMIC_STORE_RELB__
+#  define ETHR_GCC_VOLATILE_STORE_IS_ATOMIC_STORE_RELB__ ETHR_GCC_VOLATILE_BIT_MASK__
+#  undef ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD_ACQB__
+#  define ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD_ACQB__ ETHR_GCC_VOLATILE_BIT_MASK__
+#  undef ETHR_GCC_ACQB_VERSIONS__
+#  define ETHR_GCC_ACQB_VERSIONS__ ETHR_GCC_VERSIONS_MASK__
+#  undef ETHR_GCC_ACQB_MOD_VERSIONS__
+#  define ETHR_GCC_ACQB_MOD_VERSIONS__ ETHR_GCC_VERSIONS_MASK__
+#  undef ETHR_GCC_RELB_VERSIONS__
+#  define ETHR_GCC_RELB_VERSIONS__ ETHR_GCC_VERSIONS_MASK__
+#  undef ETHR_GCC_RELB_MOD_VERSIONS__
+#  define ETHR_GCC_RELB_MOD_VERSIONS__ ETHR_GCC_VERSIONS_MASK__
+#  undef ETHR___atomic_load_ACQUIRE_barrier_bug
+#  define ETHR___atomic_load_ACQUIRE_barrier_bug 0
+#  undef ETHR_GCC_RELAXED_VERSIONS__
+#  define ETHR_GCC_RELAXED_VERSIONS__ 0
+#elif defined(__i386__) || defined(__x86_64__)
+#  undef ETHR_GCC_MB_MOD_VERSIONS__
+#  define ETHR_GCC_MB_MOD_VERSIONS__ ETHR_HAVE___sync_val_compare_and_swap
+#  if ETHR_GCC_ACQB_MOD_VERSIONS__
+#    undef ETHR_GCC_ACQB_MOD_VERSIONS__
+#    define ETHR_GCC_ACQB_MOD_VERSIONS__ \
+    (ETHR_GCC_VERSIONS_MASK__ & ~ETHR_HAVE___sync_val_compare_and_swap)
+#  endif
+#  if ETHR_GCC_RELB_MOD_VERSIONS__
+#    undef ETHR_GCC_RELB_MOD_VERSIONS__
+#    define ETHR_GCC_RELB_MOD_VERSIONS__ \
+    (ETHR_GCC_VERSIONS_MASK__ & ~ETHR_HAVE___sync_val_compare_and_swap)
+#  endif
+#  ifdef ETHR_X86_OUT_OF_ORDER
+#    undef ETHR_GCC_RELAXED_MOD_VERSIONS__
+#    define ETHR_GCC_RELAXED_MOD_VERSIONS__ 0
+#  else
+#    undef ETHR___atomic_load_ACQUIRE_barrier_bug
+#    define ETHR___atomic_load_ACQUIRE_barrier_bug 0
+#    undef ETHR_GCC_VOLATILE_STORE_IS_ATOMIC_STORE_RELB__
+#    define ETHR_GCC_VOLATILE_STORE_IS_ATOMIC_STORE_RELB__ ETHR_GCC_VOLATILE_BIT_MASK__
+#    undef ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD_ACQB__
+#    define ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD_ACQB__ ETHR_GCC_VOLATILE_BIT_MASK__
+#    if !ETHR_GCC_ACQB_VERSIONS__
+#      undef ETHR_GCC_ACQB_VERSIONS__
+#      define ETHR_GCC_ACQB_VERSIONS__ ETHR_GCC_VOLATILE_BIT_MASK__
+#    endif
+#    if !ETHR_GCC_RELB_VERSIONS__
+#      undef ETHR_GCC_RELB_VERSIONS__
+#      define ETHR_GCC_RELB_VERSIONS__ ETHR_GCC_VOLATILE_BIT_MASK__
+#    endif
+#    undef ETHR_GCC_RELAXED_VERSIONS__
+#    define ETHR_GCC_RELAXED_VERSIONS__ 0
+#  endif
+#elif defined(__powerpc__) || defined(__ppc__)
+#  if !defined(ETHR_PPC_HAVE_LWSYNC)
+#    undef ETHR_GCC_RELB_VERSIONS__
+#    define ETHR_GCC_RELB_VERSIONS__ 0
+#    if defined(ETHR_GCC_IMPLEMENT_ACQB_USING_LWSYNC)
+#      undef ETHR_GCC_ACQB_VERSIONS__
+#      define ETHR_GCC_ACQB_VERSIONS__ 0
+#    endif
+#  endif
+#endif
+#if !ETHR_GCC_RELAXED_VERSIONS__
+#  undef ETHR_GCC_RELAXED_MOD_VERSIONS__
+#  define ETHR_GCC_RELAXED_MOD_VERSIONS__ 0
+#endif
+#if !ETHR_GCC_ACQB_VERSIONS__
+#  undef ETHR_GCC_ACQB_MOD_VERSIONS__
+#  define ETHR_GCC_ACQB_MOD_VERSIONS__ 0
+#endif
+#if !ETHR_GCC_RELB_VERSIONS__
+#  undef ETHR_GCC_RELB_MOD_VERSIONS__
+#  define ETHR_GCC_RELB_MOD_VERSIONS__ 0
+#endif
+#if !defined(ETHR_HAVE_NATIVE_ATOMIC32)
+#  define ETHR_ATOMIC_WANT_32BIT_IMPL__
+#  include "ethr_atomic.h"
+#endif
+#if ETHR_SIZEOF_PTR == 8 && !defined(ETHR_HAVE_NATIVE_ATOMIC64)
+#  define ETHR_ATOMIC_WANT_64BIT_IMPL__
+#  include "ethr_atomic.h"
+#endif
+#if defined(__x86_64__)
+#  undef ETHR_GCC_RELAXED_VERSIONS__
+#  define ETHR_GCC_RELAXED_VERSIONS__ 0
+#  undef ETHR_GCC_ACQB_VERSIONS__
+#  define ETHR_GCC_ACQB_VERSIONS__ 0
+#  undef ETHR_GCC_RELB_VERSIONS__
+#  define ETHR_GCC_RELB_VERSIONS__ 0
+#endif
+#if !ETHR_GCC_RELAXED_VERSIONS__
+#  undef ETHR_GCC_RELAXED_MOD_VERSIONS__
+#  define ETHR_GCC_RELAXED_MOD_VERSIONS__ 0
+#endif
+#if !ETHR_GCC_ACQB_VERSIONS__
+#  undef ETHR_GCC_ACQB_MOD_VERSIONS__
+#  define ETHR_GCC_ACQB_MOD_VERSIONS__ 0
+#endif
+#if !ETHR_GCC_RELB_VERSIONS__
+#  undef ETHR_GCC_RELB_MOD_VERSIONS__
+#  define ETHR_GCC_RELB_MOD_VERSIONS__ 0
+#endif
+#if (!defined(ETHR_HAVE_NATIVE_DW_ATOMIC) \
+     && !(ETHR_SIZEOF_PTR == 4 && defined(ETHR_HAVE_NATIVE_ATOMIC64)) \
+     && !(ETHR_SIZEOF_PTR == 8 && defined(ETHR_HAVE_NATIVE_ATOMIC128)))
+#  include "ethr_dw_atomic.h"
+#endif
+#undef ETHR___atomic_load_ACQUIRE_barrier_bug
+#undef ETHR_GCC_VOLATILE_STORE_IS_ATOMIC_STORE__
+#undef ETHR_GCC_VOLATILE_STORE_IS_ATOMIC_STORE_RELB__
+#undef ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD__
+#undef ETHR_GCC_VOLATILE_LOAD_IS_ATOMIC_LOAD_ACQB__
+#undef ETHR_GCC_RELAXED_VERSIONS__
+#undef ETHR_GCC_RELB_VERSIONS__
+#undef ETHR_GCC_RELB_VERSIONS__
+#undef ETHR_GCC_RELAXED_MOD_VERSIONS__
+#undef ETHR_GCC_ACQB_MOD_VERSIONS__
+#undef ETHR_GCC_RELB_MOD_VERSIONS__
+#undef ETHR_GCC_MB_MOD_VERSIONS__
+#endif

@@ -1,0 +1,71 @@
+#ifdef HAVE_CONFIG_H
+#  include "config.h"
+#endif
+#include "safe_string.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdarg.h>
+#include <stdlib.h>
+static void string_overflow_handler(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr,format,args);
+    va_end(args);
+    exit(1);
+}
+int vsn_printf(char* dst, size_t size, const char* format, va_list args)
+{
+    int ret = vsnprintf(dst, size, format, args);
+    if (ret >= size || ret < 0) {
+	string_overflow_handler("Buffer truncated '%s'\n",dst);
+    }
+    return ret;
+}
+int sn_printf(char* dst, size_t size, const char* format, ...)
+{
+    va_list args;
+    int ret;
+    va_start(args, format);
+    ret = vsn_printf(dst,size,format,args);
+    va_end(args);
+    return ret;
+}
+int strn_cpy(char* dst, size_t size, const char* src)
+{
+    return sn_printf(dst,size,"%s",src);
+}
+int strn_cat(char* dst, size_t size, const char* src)
+{
+    return strn_catf(dst,size,"%s",src);
+}
+int strn_catf(char* dst, size_t size, const char* format, ...)
+{
+    int ret;
+    va_list args;
+#ifdef _GNU_SOURCE
+    int len = strnlen(dst,size);
+#else
+    int len = strlen(dst);
+#endif
+    if (len >= size) {
+	string_overflow_handler("Buffer already overflowed '%.*s'\n",
+				size, dst);
+    }
+    va_start(args, format);
+    ret = vsn_printf(dst+len, size-len, format, args);
+    va_end(args);
+    return len+ret;
+}
+char* find_str(const char* haystack, int hsize, const char* needle)
+{
+    int i = 0;
+    int nsize = strlen(needle);
+    hsize -= nsize - 1;
+    for (i=0; i<hsize; i++) {
+	if (haystack[i]==needle[0] && strncmp(haystack+i,needle,nsize)==0) {
+	    return (char*)(haystack+i);
+	}
+    }
+    return NULL;
+}

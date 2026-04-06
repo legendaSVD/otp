@@ -1,0 +1,24 @@
+#include <sys/types.h>
+#include <fcntl.h>
+#include <errno.h>
+#ifdef HAVE_UNISTD_H
+#   include <unistd.h>
+#endif
+int main(int argc, char* argv[])
+{
+    char buf[16384];
+    int n;
+#ifdef _O_BINARY
+    _setmode(0, _O_BINARY);
+    _setmode(1, _O_BINARY);
+#endif
+    for (;;) {
+	n = read(0, buf, sizeof(buf));
+	if (n <= 0 && errno == EINTR)
+	    continue;
+	if (n <= 0)
+	    break;
+        write(1, buf, n);
+    }
+    return 0;
+}

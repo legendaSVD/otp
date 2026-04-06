@@ -1,0 +1,33 @@
+#include "erl_driver.h"
+static ErlDrvEntry drv_entry = {
+    NULL ,
+    NULL ,
+    NULL ,
+    NULL ,
+    NULL ,
+    NULL ,
+    VSN_MISMATCH_DRV_NAME_STR,
+    NULL ,
+    NULL ,
+    NULL ,
+    NULL ,
+    NULL ,
+    NULL ,
+    NULL ,
+    NULL ,
+    NULL ,
+#ifdef VSN_MISMATCH_DRV_EXTENDED_MARKER
+    VSN_MISMATCH_DRV_EXTENDED_MARKER,
+#else
+    ERL_DRV_EXTENDED_MARKER,
+#endif
+    ERL_DRV_EXTENDED_MAJOR_VERSION + VSN_MISMATCH_DRV_MAJOR_VSN_DIFF,
+    ERL_DRV_EXTENDED_MINOR_VERSION + VSN_MISMATCH_DRV_MINOR_VSN_DIFF,
+    ERL_DRV_FLAG_USE_PORT_LOCKING,
+    NULL ,
+    NULL
+};
+DRIVER_INIT(VSN_MISMATCH_DRV_NAME)
+{
+    return &drv_entry;
+}

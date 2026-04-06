@@ -1,0 +1,9 @@
+char *string_expected_result[] = {
+	"hej",
+	"hopp      ",
+	"      hopp",
+	"hopp                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ",
+	"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                hopp",
+	"\t      abcd",
+	"\t                                                                                                                                                                                                                                                                                                                                                                                                    abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ1234567890()[]{}+-;,:.@$!\"#%&/\\=?'`^~|<>*_\a\b\f\n\r\t\v",
+	NULL};

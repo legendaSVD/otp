@@ -1,0 +1,4 @@
+#include "debug.h"
+#if !defined(ZSTD_LINUX_KERNEL) || (DEBUGLEVEL>=2)
+int g_debuglevel = DEBUGLEVEL;
+#endif
